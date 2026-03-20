@@ -118,3 +118,6 @@ cithai-django/
 ├── db.sqlite3           # SQLite database
 └── manage.py
 ```
+
+## Demo Clip
+[Watch Demo](https://www.youtube.com/watch?v=wLRInJ4SQEU)
