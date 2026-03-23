@@ -106,6 +106,21 @@ SQLite (default Django setup). The schema is fully defined by migrations in each
 
 ---
 
+## API Endpoints
+
+Run the server and visit the links below in your browser to test CRUD via the DRF browsable API.
+
+| Method | URL | Operation |
+|--------|-----|-----------|
+| GET / POST | `/api/songs/` | List / Create |
+| GET / PUT / DELETE | `/api/songs/{id}/` | Read / Update / Delete |
+| GET / POST | `/api/users/` | List / Create |
+| GET / PUT / DELETE | `/api/users/{id}/` | Read / Update / Delete |
+| GET / POST | `/api/song-generation-requests/` | List / Create |
+| GET / PUT / DELETE | `/api/song-generation-requests/{id}/` | Read / Update / Delete |
+| GET / POST | `/api/sharelinks/` | List / Create |
+| GET / PUT / DELETE | `/api/sharelinks/{id}/` | Read / Update / Delete |
+
 ## Project Structure
 
 ```
