@@ -1,3 +1,7 @@
-from django.shortcuts import render
+from rest_framework import viewsets
+from .models import Sharelink
+from .serializers import SharelinkSerializer
 
-# Create your views here.
+class SharelinkViewSet(viewsets.ModelViewSet):
+    queryset = Sharelink.objects.all()
+    serializer_class = SharelinkSerializer

@@ -4,4 +4,4 @@ from .models import Sharelink
 class SharelinkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sharelink
-        fields = ["id", "song", "url"]
+        fields = "__all__"
