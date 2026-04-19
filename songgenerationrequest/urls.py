@@ -1,7 +1,10 @@
-from rest_framework.routers import DefaultRouter
-from .views import SongGenerationRequestViewSet
+from django.urls import path
+from .views import SongGenerationRequestViewSet, SongGenerationRequestStatusViewSet
 
-router = DefaultRouter()
-router.register(r"song-generation-requests", SongGenerationRequestViewSet)
+app_name = "song_generation_requests"
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('', SongGenerationRequestViewSet.as_view()),
+    path('<int:pk>/', SongGenerationRequestViewSet.as_view()),
+    path('status/<str:taskId>/<int:userId>', SongGenerationRequestStatusViewSet.as_view()),
+]
