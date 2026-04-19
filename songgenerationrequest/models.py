@@ -3,17 +3,13 @@ from song.enums import Occasion, Genre, VoiceType, Mood
 
 
 # Create your models here.
-class SongGenerationRequest(models.Model):
-    class RequestStatus(models.TextChoices):
-        GENERATING = "generating", "generating"
-        COMPLETED = "completed", "completed"
-        FAILED = "failed", "failed"
 
-    song = models.OneToOneField(
-        "song.Song",
-        on_delete=models.CASCADE,
-        related_name="song_generation_request"
-    )
+class RequestStatus(models.TextChoices):
+    GENERATING = "generating", "generating"
+    COMPLETED = "completed", "completed"
+    FAILED = "failed", "failed"
+
+class SongGenerationRequest(models.Model):
     
     requested_at = models.DateTimeField(auto_now_add=True)
     estimated_duration = models.IntegerField()
@@ -25,6 +21,7 @@ class SongGenerationRequest(models.Model):
     genre = models.CharField(max_length=10, choices=Genre.choices, default=Genre.POP)
     voice_type = models.CharField(max_length=13, choices=VoiceType.choices, default=VoiceType.MALE)
     mood = models.CharField(max_length=10, choices=Mood.choices, default=Mood.HAPPY)
+    taskId = models.CharField(max_length=255, blank=True, null=True)
     
 
     class Meta:
