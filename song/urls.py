@@ -1,7 +1,9 @@
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from .views import SongViewSet
 
-router = DefaultRouter()
-router.register(r"songs", SongViewSet)
+app_name = "song"
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('', SongViewSet.as_view()),
+    path('<int:pk>/', SongViewSet.as_view())
+]
