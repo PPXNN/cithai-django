@@ -1,7 +1,9 @@
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from .views import SharelinkViewSet
 
-router = DefaultRouter()
-router.register(r"sharelinks", SharelinkViewSet)
+app_name = "sharelinks"
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('', SharelinkViewSet.as_view()),
+    path('<int:pk>/', SharelinkViewSet.as_view())
+]
