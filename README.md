@@ -1,6 +1,6 @@
-# Cithai Django – Exercise 3: Domain Layer Implementation
+# Cithai Django – Domain Layer & Song Generation
 
-A Django-based domain layer for Cithai.
+A Django-based domain layer for Cithai, including **Exercise 4** song generation via the **Strategy pattern** (mock vs Suno API).
 
 ---
 
@@ -31,6 +31,116 @@ python manage.py runserver
 ```
 
 Visit `http://127.0.0.1:8000/admin/` to access the Django Admin interface.
+
+---
+
+## Song generation strategies (Exercise 4)
+
+Generation is implemented with a shared **`SongGenerationStrategy`** interface (`generate` + `get_record_info`) and two implementations:
+
+| Strategy | Module | Behavior |
+|----------|--------|----------|
+| **mock** | `songgenerationrequest.generation.mock` | No network; fixed `taskId` and immediate `SUCCESS` record-info |
+| **suno** | `songgenerationrequest.generation.suno` | `POST https://api.sunoapi.org/api/v1/generate` and `GET .../generate/record-info` with `Authorization: Bearer …` |
+
+Active strategy is chosen in **one place**: `get_song_generation_strategy()` in `songgenerationrequest/generation/factory.py`, driven by Django settings from the environment.
+
+### Configure `.env` (do not commit secrets)
+
+Copy `.env.example` to `.env` and set:
+
+- **`GENERATOR_STRATEGY`**: `mock` (default) or `suno`
+- **`SUNO_API_KEY`**: your Bearer token from Suno — **required only when** `GENERATOR_STRATEGY=suno`
+
+### Run in mock mode (offline) — step by step
+
+Mock mode is for **local development**: no `SUNO_API_KEY`, no calls to Suno. The server uses `MockSongGeneratorStrategy` (`songgenerationrequest/generation/mock.py`), which always returns the same `taskId` and a fake `SUCCESS` payload (including a sample `audioUrl`).
+
+#### 1. Turn mock on
+
+In `.env` (copy from `.env.example` if needed):
+
+```bash
+GENERATOR_STRATEGY=mock
+```
+
+Restart `runserver` after changing `.env` so Django reloads settings.
+
+#### 2. Know your `userId`
+
+The status URL needs the **numeric primary key** of a `User` who should own the new `Song`.
+
+- After `createsuperuser`, open **Admin → Users** and note that user’s **ID**, or  
+- List users: `GET http://127.0.0.1:8000/api/user/`
+
+Use that integer as `userId` below (example: `1`).
+
+#### 3. Create a generation request (`POST`)
+
+`POST http://127.0.0.1:8000/api/song-generation-requests/`  
+Content-Type: `application/json`
+
+Required / typical body (see `song/enums.py` for allowed values):
+
+```json
+{
+  "estimated_duration": 60,
+  "title": "Birthday demo",
+  "occasion": "birthday",
+  "genre": "classical",
+  "voice_type": "male",
+  "mood": "calm"
+}
+```
+
+- **`estimated_duration`**: required integer (seconds estimate).  
+- **`occasion`**: `birthday` | `wedding` | `anniversary` | `holiday` | `other`  
+- **`genre`**: `pop` | `rock` | `jazz` | `classical` | `hiphop` | `rb` | `folk`  
+- **`voice_type`**: `male` | `female` | `instrumental`  
+- **`mood`**: `happy` | `sad` | `romantic` | `calm` | `funny`  
+
+On success (`201`), the response includes a fixed mock **`taskId`**:
+
+`mock-task-00000000-0000-4000-8000-000000000001`
+
+#### 4. Poll status once (`GET`) — creates the `Song`
+
+`GET http://127.0.0.1:8000/api/song-generation-requests/status/<taskId>/<userId>`
+
+Example (replace `1` with your real user id):
+
+```text
+GET http://127.0.0.1:8000/api/song-generation-requests/status/mock-task-00000000-0000-4000-8000-000000000001/1
+```
+
+When `data.status` is `SUCCESS`, the view marks the `SongGenerationRequest` completed and **creates a `Song`** for that `userId` using the mock Suno-shaped payload (title, tags, audio URL, etc.). You can confirm in Admin or with `GET /api/song/`.
+
+**Note:** Mock `get_record_info` only accepts that **exact** `taskId`. Any other id returns `404` with `mock: unknown taskId`.
+
+#### 5. Optional: `curl` (bash)
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/song-generation-requests/ \
+  -H "Content-Type: application/json" \
+  -d '{"estimated_duration":60,"title":"Birthday demo","occasion":"birthday","genre":"classical","voice_type":"male","mood":"calm"}'
+
+curl -s "http://127.0.0.1:8000/api/song-generation-requests/status/mock-task-00000000-0000-4000-8000-000000000001/1"
+```
+
+### Run in Suno mode
+
+```bash
+# .env
+GENERATOR_STRATEGY=suno
+SUNO_API_KEY=your_token_here
+```
+
+Same API paths: `POST` creates a real task (`taskId` from Suno); `GET status/...` calls record-info until `status` is `SUCCESS` (or returns current Suno payload).
+
+### Minimal demo checklist
+
+- **Mock**: `POST` then `GET status` with the returned mock `taskId` — no API key, no outbound HTTP for generation.
+- **Suno**: `POST` shows a real `taskId`; `GET status` returns Suno record-info (may be `PENDING` / `TEXT_SUCCESS` / … until `SUCCESS`).
 
 ---
 
@@ -116,8 +226,9 @@ Run the server and visit the links below in your browser to test CRUD via the DR
 | GET / PUT / DELETE | `/api/songs/{id}/` | Read / Update / Delete |
 | GET / POST | `/api/users/` | List / Create |
 | GET / PUT / DELETE | `/api/users/{id}/` | Read / Update / Delete |
-| GET / POST | `/api/song-generation-requests/` | List / Create |
+| GET / POST | `/api/song-generation-requests/` | List / Create (uses `GENERATOR_STRATEGY`) |
 | GET / PUT / DELETE | `/api/song-generation-requests/{id}/` | Read / Update / Delete |
+| GET | `/api/song-generation-requests/status/{taskId}/{userId}` | Poll Suno record-info; on `SUCCESS`, completes request and creates `Song` |
 | GET / POST | `/api/sharelinks/` | List / Create |
 | GET / PUT / DELETE | `/api/sharelinks/{id}/` | Read / Update / Delete |
 
@@ -133,6 +244,3 @@ cithai-django/
 ├── db.sqlite3           # SQLite database
 └── manage.py
 ```
-
-## Demo Clip
-[Watch Demo](https://www.youtube.com/watch?v=wLRInJ4SQEU)
