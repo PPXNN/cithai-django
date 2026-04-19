@@ -17,8 +17,8 @@ A Django-based domain layer for Cithai, including **Exercise 4** song generation
 git clone <your-repo-url>
 cd cithai-django
 
-# Install dependencies
-pip install django djangorestframework
+# Install requirements
+pip install -r requirements.txt
 
 # Apply migrations
 python manage.py migrate
