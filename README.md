@@ -199,6 +199,18 @@ To keep design artifacts synchronized with code, this repository includes:
 - Sequence diagram (song generation flow): `docs/diagrams/sequence-diagram.png`
 - MVT architecture diagram: `docs/diagrams/mvt-architecture.png`
 
+### Class Diagram
+![Class Diagram](docs/diagrams/class-diagram.png)
+
+### Domain Model Diagram
+![Domain Model Diagram](docs/diagrams/domain-model.png)
+
+### Sequence Diagram
+![Sequence Diagram](docs/diagrams/sequence-diagram.png)
+
+### MVT Architecture Diagram
+![MVT Architecture Diagram](docs/diagrams/mvt-architecture.png)
+
 ---
 
 ## CRUD Operations
