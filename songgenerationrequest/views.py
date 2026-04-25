@@ -1,5 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -33,11 +34,22 @@ def home_page(request):
 
 @ensure_csrf_cookie
 def sign_in_page(request):
-    return render(request, "songgenerationrequest/signin.html")
+    if request.user.is_authenticated:
+        return redirect("generate_ai_music")
+    return render(
+        request,
+        "songgenerationrequest/signin.html",
+        {
+            "google_client_id": str(getattr(settings, "GOOGLE_CLIENT_ID", "") or "").strip(),
+            "google_redirect_uri": str(getattr(settings, "GOOGLE_REDIRECT_URI", "") or "").strip(),
+        },
+    )
 
 
 @ensure_csrf_cookie
 def sign_up_page(request):
+    if request.user.is_authenticated:
+        return redirect("generate_ai_music")
     return render(request, "songgenerationrequest/signup.html")
 
 
