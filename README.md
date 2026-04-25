@@ -190,6 +190,15 @@ A shareable link for a completed song:
 When `is_active = false`, opening the public share URL returns `404` (disabled).  
 When `is_active = true`, the URL redirects to the song audio file.
 
+## UML Diagrams
+
+To keep design artifacts synchronized with code, this repository includes:
+
+- Class diagram: `docs/diagrams/class-diagram.png`
+- Domain model diagram: `docs/diagrams/domain-model.png`
+- Sequence diagram (song generation flow): `docs/diagrams/sequence-diagram.png`
+- MVT architecture diagram: `docs/diagrams/mvt-architecture.png`
+
 ---
 
 ## CRUD Operations
@@ -234,14 +243,35 @@ Run the server and visit the links below in your browser to test CRUD via the DR
 | GET / PUT / DELETE | `/api/song/{id}/` | Song read / update / delete |
 | GET / POST | `/api/user/` | User list / create |
 | GET / PUT / DELETE | `/api/user/{id}/` | User read / update / delete |
-| POST | `/api/user/auth/signup/` | User sign up |
-| POST | `/api/user/auth/signin/` | User sign in |
+| POST | `/api/user/auth/signup/` | User sign up (requires `username`, `email`, `password`) |
+| POST | `/api/user/auth/signin/` | User sign in (supports `username` + `password`; `email` + `password` also supported) |
 | GET / POST | `/api/song-generation-requests/` | Request list / create (uses `GENERATOR_STRATEGY`) |
 | GET / PUT / DELETE | `/api/song-generation-requests/{id}/` | Request read / update / delete |
 | GET | `/api/song-generation-requests/status/{taskId}/{userId}` | Poll record-info; on `SUCCESS`, completes request and creates `Song` |
 | GET / POST | `/api/sharelinks/` | Sharelink list / create |
 | GET / PUT / DELETE | `/api/sharelinks/{id}/` | Sharelink read / update / delete |
 | GET | `/api/sharelinks/public/{id}/` | Public share URL (only when `is_active=true`) |
+
+### Auth request examples
+
+Sign up:
+
+```json
+{
+  "username": "demo_user",
+  "email": "demo@example.com",
+  "password": "secret123"
+}
+```
+
+Sign in (recommended):
+
+```json
+{
+  "username": "demo_user",
+  "password": "secret123"
+}
+```
 
 ## Frontend Notes (My Songs)
 
