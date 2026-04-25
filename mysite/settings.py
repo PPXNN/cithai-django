@@ -129,3 +129,5 @@ STATIC_URL = 'static/'
 # Song generation (Exercise 4 – Strategy: mock | suno)
 GENERATOR_STRATEGY = os.getenv('GENERATOR_STRATEGY', 'mock').strip().lower()
 SUNO_API_KEY = os.getenv('SUNO_API_KEY', '').strip()
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '').strip()
+GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://127.0.0.1:8000/api/user/auth/google/redirect/').strip()
