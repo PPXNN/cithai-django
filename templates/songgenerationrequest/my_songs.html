@@ -30,11 +30,6 @@
 {% block page_script %}
 <script>
   (function () {
-    const user = getCurrentUser();
-    if (!user || !user.id) {
-      window.location.href = "/signin/";
-      return;
-    }
     const listEl = document.getElementById("songs-list");
     const emptyEl = document.getElementById("empty-box");
     const player = document.getElementById("player");
@@ -148,6 +143,8 @@
     }
 
     async function loadSongs() {
+      const user = await requireAuthUser();
+      if (!user) return;
       const [songRes, shareMap] = await Promise.all([
         fetch("/api/song/"),
         loadShareMap()
