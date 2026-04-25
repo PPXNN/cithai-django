@@ -1,0 +1,287 @@
+{% extends "songgenerationrequest/base.html" %}
+{% block title %}My Songs - AI Music Studio{% endblock %}
+{% block content %}
+<section style="max-width:820px; margin:0 auto;">
+  <h1 style="margin:0 0 6px;">My Songs</h1>
+  <p style="margin:0 0 18px; color:#95a9c3;">Manage your AI-generated music library</p>
+  <div id="songs-list" style="display:grid; gap:12px;"></div>
+  <div id="empty-box" class="card" style="padding:18px; color:#95a9c3; display:none;">No songs yet. Generate your first track to see it here.</div>
+</section>
+<div id="delete-modal" style="position:fixed; inset:0; background:rgba(2, 6, 23, 0.72); display:none; align-items:center; justify-content:center; z-index:9999; padding:16px;">
+  <div class="card" style="width:100%; max-width:420px; padding:18px;">
+    <h3 style="margin:0 0 8px;">Delete song</h3>
+    <p id="delete-modal-text" style="margin:0; color:#95a9c3;"></p>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+      <button id="delete-cancel-btn" class="btn-ghost" type="button">Cancel</button>
+      <button id="delete-confirm-btn" class="btn" type="button" style="background:#dc2626;">Delete</button>
+    </div>
+  </div>
+</div>
+<section class="card" style="position:fixed; left:0; right:0; bottom:0; border-radius:0; border-left:none; border-right:none; padding:10px 20px;">
+  <div style="max-width:1000px; margin:0 auto; display:flex; align-items:center; gap:12px;">
+    <div style="min-width:220px;">
+      <div id="player-title" style="font-weight:700; font-size:14px;">No song selected</div>
+      <div id="player-meta" style="font-size:12px; color:#95a9c3;"></div>
+    </div>
+    <audio id="player" controls style="width:100%;"></audio>
+  </div>
+</section>
+{% endblock %}
+{% block page_script %}
+<script>
+  (function () {
+    const user = getCurrentUser();
+    if (!user || !user.id) {
+      window.location.href = "/signin/";
+      return;
+    }
+    const listEl = document.getElementById("songs-list");
+    const emptyEl = document.getElementById("empty-box");
+    const player = document.getElementById("player");
+    const playerTitle = document.getElementById("player-title");
+    const playerMeta = document.getElementById("player-meta");
+    const deleteModal = document.getElementById("delete-modal");
+    const deleteModalText = document.getElementById("delete-modal-text");
+    const deleteCancelBtn = document.getElementById("delete-cancel-btn");
+    const deleteConfirmBtn = document.getElementById("delete-confirm-btn");
+    let pendingDeleteResolver = null;
+
+    function toDate(d) {
+      if (!d) return "";
+      const dt = new Date(d);
+      if (Number.isNaN(dt.getTime())) return "";
+      return dt.toLocaleDateString();
+    }
+    function shareBtnLabel(isActive) {
+      return isActive ? "Share: ON" : "Share: OFF";
+    }
+
+    function applyShareBtnState(btn, isActive) {
+      btn.setAttribute("data-share-active", isActive ? "1" : "0");
+      btn.textContent = shareBtnLabel(isActive);
+      btn.style.borderColor = isActive ? "rgba(34, 197, 94, 0.55)" : "rgba(148, 163, 184, 0.2)";
+      btn.style.background = isActive ? "rgba(34, 197, 94, 0.18)" : "rgba(15, 23, 42, 0.75)";
+    }
+
+    function closeDeleteModal(confirmed) {
+      if (pendingDeleteResolver) {
+        pendingDeleteResolver(Boolean(confirmed));
+        pendingDeleteResolver = null;
+      }
+      deleteModal.style.display = "none";
+      deleteModalText.textContent = "";
+    }
+
+    function confirmDeleteUi(songTitle) {
+      deleteModalText.textContent = 'Are you sure you want to delete "' + songTitle + '"?';
+      deleteModal.style.display = "flex";
+      return new Promise(function (resolve) {
+        pendingDeleteResolver = resolve;
+      });
+    }
+
+    function card(song, shareMap) {
+      const genre = song.genre || "-";
+      const mood = song.mood || "-";
+      const createdAt = toDate(song.created_at);
+      const share = shareMap[String(song.id)];
+      const isActive = Boolean(share && share.is_active);
+      return '<div class="card" style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center;">'
+        + '<div><div style="font-weight:700;">' + (song.title || "Untitled") + '</div>'
+        + '<div style="font-size:12px; color:#95a9c3;">' + genre + " • " + mood + (createdAt ? " • " + createdAt : "") + '</div></div>'
+        + '<div style="display:flex; align-items:center; gap:8px;">'
+        + '<button class="btn-ghost share-btn" data-song-id="' + song.id + '" data-song-title="' + (song.title || "") + '" data-audio-url="' + (song.audiofile_url || "") + '" data-share-active="' + (isActive ? "1" : "0") + '">' + shareBtnLabel(isActive) + '</button>'
+        + '<button class="btn-ghost delete-btn" data-song-id="' + song.id + '" data-song-title="' + (song.title || "Untitled") + '" style="border-color: rgba(239, 68, 68, 0.45);">Delete</button>'
+        + '<button class="btn-ghost play-btn" data-url="' + (song.audiofile_url || "") + '" data-title="' + (song.title || "") + '" data-meta="' + genre + " • " + mood + '">Play</button>'
+        + '</div>'
+        + "</div>";
+    }
+
+    async function loadShareMap() {
+      const listRes = await fetch("/api/sharelinks/", { credentials: "same-origin" });
+      const listData = await listRes.json();
+      if (!listRes.ok) {
+        throw new Error("Failed to read share links");
+      }
+      const allLinks = Array.isArray(listData) ? listData : [];
+      const shareMap = {};
+      allLinks.forEach(function (item) {
+        if (!item || !item.song) return;
+        shareMap[String(item.song)] = item;
+      });
+      return shareMap;
+    }
+
+    async function upsertSharelink(songId, fallbackUrl, targetActive) {
+      const shareMap = await loadShareMap();
+      const existing = shareMap[String(songId)];
+      const baseUrl = String(fallbackUrl || "").trim();
+      const payload = {
+        song: songId,
+        url: baseUrl || (window.location.origin + "/my-songs/"),
+        is_active: Boolean(targetActive)
+      };
+      if (!existing) {
+        const createRes = await fetch("/api/sharelinks/", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: csrfHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const createData = await createRes.json();
+        if (!createRes.ok) {
+          throw new Error("Failed to create share link");
+        }
+        return createData;
+      }
+      const updateRes = await fetch("/api/sharelinks/" + existing.id + "/", {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: csrfHeaders(),
+        body: JSON.stringify(payload)
+      });
+      const updateData = await updateRes.json();
+      if (!updateRes.ok) {
+        throw new Error("Failed to update share link");
+      }
+      return updateData;
+    }
+
+    async function loadSongs() {
+      const [songRes, shareMap] = await Promise.all([
+        fetch("/api/song/"),
+        loadShareMap()
+      ]);
+      if (!songRes.ok) {
+        throw new Error("Failed to load songs");
+      }
+      const allSongs = await songRes.json();
+      const songs = allSongs.filter(function (s) { return Number(s.user) === Number(user.id); });
+      if (!songs.length) {
+        emptyEl.style.display = "block";
+        return;
+      }
+      listEl.innerHTML = songs.map(function (song) { return card(song, shareMap); }).join("");
+      listEl.addEventListener("click", function (e) {
+        const btn = e.target.closest(".play-btn");
+        if (btn) {
+          const url = btn.getAttribute("data-url");
+          if (!url) return;
+          player.src = url;
+          playerTitle.textContent = btn.getAttribute("data-title") || "Song";
+          playerMeta.textContent = btn.getAttribute("data-meta") || "";
+          player.play();
+          return;
+        }
+        const shareBtn = e.target.closest(".share-btn");
+        if (shareBtn) {
+          const songId = Number(shareBtn.getAttribute("data-song-id"));
+          const songTitle = shareBtn.getAttribute("data-song-title") || "song";
+          const audioUrl = shareBtn.getAttribute("data-audio-url") || "";
+          if (!songId) return;
+          const isActive = shareBtn.getAttribute("data-share-active") === "1";
+          const targetActive = !isActive;
+          shareBtn.disabled = true;
+          shareBtn.textContent = "Updating...";
+          upsertSharelink(songId, audioUrl, targetActive)
+            .then(async function (shareData) {
+              const shareMap = await loadShareMap();
+              const latest = shareMap[String(songId)] || shareData;
+              const activeNow = Boolean(latest && latest.is_active);
+              applyShareBtnState(shareBtn, activeNow);
+              if (activeNow) {
+                const shareUrl = (latest && latest.url) ? latest.url : "";
+                if (shareUrl) {
+                  await navigator.clipboard.writeText(shareUrl);
+                }
+                playerMeta.textContent = "Share enabled and link copied for " + songTitle;
+              } else {
+                playerMeta.textContent = "Share disabled for " + songTitle;
+              }
+            })
+            .catch(function (err) {
+              applyShareBtnState(shareBtn, isActive);
+              playerMeta.textContent = String(err);
+            })
+            .finally(function () {
+              shareBtn.disabled = false;
+            });
+          return;
+        }
+        const deleteBtn = e.target.closest(".delete-btn");
+        if (!deleteBtn) return;
+        const songId = Number(deleteBtn.getAttribute("data-song-id"));
+        const songTitle = deleteBtn.getAttribute("data-song-title") || "Untitled";
+        if (!songId) return;
+        confirmDeleteUi(songTitle).then(function (confirmed) {
+          if (!confirmed) return;
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = "Deleting...";
+        fetch("/api/song/" + songId + "/", {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: csrfHeaders()
+        })
+          .then(async function (res) {
+            if (!res.ok) {
+              let detail = "";
+              try {
+                const errData = await res.json();
+                detail = JSON.stringify(errData);
+              } catch (_) {
+                detail = "";
+              }
+              throw new Error("Failed to delete song (" + res.status + ")" + (detail ? ": " + detail : ""));
+            }
+            const cardEl = deleteBtn.closest(".card");
+            if (cardEl) {
+              cardEl.remove();
+            }
+            if (!listEl.querySelector(".card")) {
+              emptyEl.style.display = "block";
+            }
+            if (String(player.src || "").length && playerTitle.textContent === songTitle) {
+              player.pause();
+              player.removeAttribute("src");
+              player.load();
+              playerTitle.textContent = "No song selected";
+              playerMeta.textContent = "";
+            } else {
+              playerMeta.textContent = "Deleted " + songTitle;
+            }
+          })
+          .catch(function (err) {
+            deleteBtn.textContent = "Delete failed";
+            setTimeout(function () { deleteBtn.textContent = "Delete"; }, 1200);
+            playerMeta.textContent = String(err);
+          })
+          .finally(function () {
+            deleteBtn.disabled = false;
+          });
+        });
+      });
+      listEl.querySelectorAll(".share-btn").forEach(function (btn) {
+        const isActive = btn.getAttribute("data-share-active") === "1";
+        applyShareBtnState(btn, isActive);
+      });
+    }
+
+    deleteCancelBtn.addEventListener("click", function () {
+      closeDeleteModal(false);
+    });
+    deleteConfirmBtn.addEventListener("click", function () {
+      closeDeleteModal(true);
+    });
+    deleteModal.addEventListener("click", function (e) {
+      if (e.target === deleteModal) {
+        closeDeleteModal(false);
+      }
+    });
+
+    loadSongs().catch(function (err) {
+      emptyEl.style.display = "block";
+      emptyEl.textContent = "Failed to load songs: " + err;
+    });
+  })();
+</script>
+{% endblock %}
