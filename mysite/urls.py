@@ -16,8 +16,20 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from songgenerationrequest.views import (
+    generate_ai_music_page,
+    home_page,
+    my_songs_page,
+    sign_in_page,
+    sign_up_page,
+)
 
 urlpatterns = [
+    path("", home_page, name="home"),
+    path("signin/", sign_in_page, name="signin"),
+    path("signup/", sign_up_page, name="signup"),
+    path("generate-ai-music/", generate_ai_music_page, name="generate_ai_music"),
+    path("my-songs/", my_songs_page, name="my_songs"),
     path('admin/', admin.site.urls),
     path("api/song/", include("song.urls")),
     path("api/user/", include("user.urls")),
