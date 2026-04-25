@@ -1,0 +1,29 @@
+{% extends "songgenerationrequest/base.html" %}
+{% block title %}AI Music Studio{% endblock %}
+{% block content %}
+<section style="text-align:center; padding:72px 8px 96px;">
+  <div style="font-size:52px; font-weight:800; line-height:1.1;">Create Music with<br /><span style="color:#60a5fa;">Artificial Intelligence</span></div>
+  <p style="max-width:640px; margin:18px auto 28px; color:#a3b6ce;">Transform your ideas into professional music tracks instantly. No musical experience required.</p>
+  <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+    <a class="btn" href="/signup/" style="padding:12px 20px;">Start Creating for Free</a>
+    <a class="btn-ghost" href="/signin/" style="padding:12px 20px;">Sign In</a>
+  </div>
+</section>
+<section>
+  <h2 style="text-align:center; margin:0 0 20px;">Powerful Features</h2>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;">
+    <article class="card" style="padding:18px;">
+      <h3 style="margin:0 0 8px;">AI Generation</h3>
+      <p style="margin:0; color:#9bb0c9;">Generate songs from style and mood in seconds.</p>
+    </article>
+    <article class="card" style="padding:18px;">
+      <h3 style="margin:0 0 8px;">Flexible Controls</h3>
+      <p style="margin:0; color:#9bb0c9;">Choose genre, occasion, voice type, and duration.</p>
+    </article>
+    <article class="card" style="padding:18px;">
+      <h3 style="margin:0 0 8px;">Your Library</h3>
+      <p style="margin:0; color:#9bb0c9;">Save and replay generated tracks from My Songs.</p>
+    </article>
+  </div>
+</section>
+{% endblock %}
