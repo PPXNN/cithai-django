@@ -51,11 +51,6 @@
 {% block page_script %}
 <script>
   (function () {
-    const user = getCurrentUser();
-    if (!user || !user.id) {
-      window.location.href = "/signin/";
-      return;
-    }
     const form = document.getElementById("gen-form");
     const submitBtn = document.getElementById("submit-btn");
     const notice = document.getElementById("notice");
@@ -65,6 +60,8 @@
     }
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
+      const user = await requireAuthUser();
+      if (!user) return;
       submitBtn.disabled = true;
       const payload = {
         title: document.getElementById("title").value.trim(),
@@ -144,6 +141,7 @@
         submitBtn.disabled = false;
       }
     });
+    requireAuthUser();
   })();
 </script>
 {% endblock %}
