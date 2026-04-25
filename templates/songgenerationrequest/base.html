@@ -45,6 +45,8 @@
       align-items: center;
       gap: 10px;
       font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
     }
     .brand svg { color: #3b82f6; }
     .links {
@@ -112,10 +114,10 @@
 </head>
 <body>
   <nav class="nav">
-    <div class="brand">
+    <a class="brand" href="/">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
       AI Music Studio
-    </div>
+    </a>
     <div class="links" id="nav-links"></div>
   </nav>
   <main class="container">
@@ -144,6 +146,31 @@
     function clearCurrentUser() {
       localStorage.removeItem("currentUser");
     }
+    async function refreshCurrentUserFromSession() {
+      try {
+        const res = await fetch("/api/user/auth/me/", {
+          credentials: "same-origin"
+        });
+        if (!res.ok) {
+          clearCurrentUser();
+          return null;
+        }
+        const data = await res.json();
+        setCurrentUser(data);
+        return data;
+      } catch (err) {
+        // If network fails, keep local fallback so UI still functions.
+        return getCurrentUser();
+      }
+    }
+    async function requireAuthUser() {
+      const user = await refreshCurrentUserFromSession();
+      if (!user || !user.id) {
+        window.location.href = "/signin/";
+        return null;
+      }
+      return user;
+    }
     function buildNav() {
       const root = document.getElementById("nav-links");
       if (!root) return;
@@ -151,15 +178,24 @@
       if (user && user.id) {
         root.innerHTML = '<a class="btn-ghost" href="/generate-ai-music/">Generate</a><a class="btn-ghost" href="/my-songs/">My Songs</a><button class="btn-ghost" id="logout-btn">Logout</button>';
         const btn = document.getElementById("logout-btn");
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", async function () {
+          try {
+            await fetch("/api/user/auth/signout/", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: csrfHeaders()
+            });
+          } catch (err) {
+            // Still clear local state even if signout request fails.
+          }
           clearCurrentUser();
-          window.location.href = "/";
+          window.location.href = "/signin/";
         });
       } else {
         root.innerHTML = '<a class="btn-ghost" href="/signin/">Sign In</a><a class="btn" href="/signup/">Get Started</a>';
       }
     }
-    buildNav();
+    refreshCurrentUserFromSession().finally(buildNav);
   </script>
   {% block page_script %}{% endblock %}
 </body>
