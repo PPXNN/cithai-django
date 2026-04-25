@@ -138,6 +138,8 @@ class SongGenerationRequestStatusViewSet(APIView):
                 return Response(resp_json, status=_http_status_for_suno_envelope(resp_json))
 
             song_request_data = song_request_qs[0]
+            if Song.objects.filter(song_generation_request=song_request_data).exists():
+                return Response(resp_json, status=_http_status_for_suno_envelope(resp_json))
             serializer = SongGenerationRequestSerializer(
                 song_request_data,
                 data={"request_status": RequestStatus.COMPLETED},
