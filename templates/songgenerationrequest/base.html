@@ -146,6 +146,40 @@
     function clearCurrentUser() {
       localStorage.removeItem("currentUser");
     }
+    function getPendingGenerationTasks() {
+      try {
+        const raw = JSON.parse(localStorage.getItem("pendingGenerationTasks") || "[]");
+        if (!Array.isArray(raw)) return [];
+        return raw.filter(function (item) {
+          return item && item.taskId && item.userId;
+        });
+      } catch (err) {
+        return [];
+      }
+    }
+    function setPendingGenerationTasks(tasks) {
+      localStorage.setItem("pendingGenerationTasks", JSON.stringify(Array.isArray(tasks) ? tasks : []));
+    }
+    function addPendingGenerationTask(taskId, userId) {
+      if (!taskId || !userId) return;
+      const tasks = getPendingGenerationTasks();
+      const keyTaskId = String(taskId);
+      const keyUserId = Number(userId);
+      const exists = tasks.some(function (item) {
+        return String(item.taskId) === keyTaskId && Number(item.userId) === keyUserId;
+      });
+      if (exists) return;
+      tasks.push({ taskId: keyTaskId, userId: keyUserId, createdAt: Date.now() });
+      setPendingGenerationTasks(tasks);
+    }
+    function removePendingGenerationTask(taskId, userId) {
+      const keyTaskId = String(taskId);
+      const keyUserId = Number(userId);
+      const next = getPendingGenerationTasks().filter(function (item) {
+        return !(String(item.taskId) === keyTaskId && Number(item.userId) === keyUserId);
+      });
+      setPendingGenerationTasks(next);
+    }
     async function refreshCurrentUserFromSession() {
       try {
         const res = await fetch("/api/user/auth/me/", {
