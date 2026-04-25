@@ -311,6 +311,9 @@ cithai-django/
 ├── song/                # Song domain entity
 ├── songgenerationrequest/  # Generation job tracking
 ├── sharelink/           # Share link entity
+├── templates/           # HTML templates (UI pages)
+├── docs/
+│   └── diagrams/        # UML/domain/sequence/MVT diagrams
 ├── db.sqlite3           # SQLite database
 └── manage.py
 ```
