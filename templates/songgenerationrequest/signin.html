@@ -1,5 +1,10 @@
 {% extends "songgenerationrequest/base.html" %}
 {% block title %}Sign In - AI Music Studio{% endblock %}
+{% block extra_head %}
+{% if google_client_id %}
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+{% endif %}
+{% endblock %}
 {% block content %}
 <section style="max-width:460px; margin:30px auto;">
   <div class="card" style="padding:28px;">
@@ -14,6 +19,16 @@
       <button class="btn" style="width:100%; margin-top:16px; padding:11px 14px;" type="submit">Sign In</button>
       <div id="notice" class="notice"></div>
     </form>
+    {% if google_client_id %}
+    <div style="display:flex; align-items:center; gap:10px; margin:18px 0;">
+      <div style="flex:1; height:1px; background:rgba(148,163,184,0.25);"></div>
+      <span style="color:#95a9c3; font-size:12px; letter-spacing:0.08em;">OR</span>
+      <div style="flex:1; height:1px; background:rgba(148,163,184,0.25);"></div>
+    </div>
+    <div id="google-btn-wrap" style="display:flex; justify-content:center;"></div>
+    {% else %}
+    <p style="margin:14px 0 0; color:#95a9c3; font-size:13px;">Google Sign-In is unavailable. Set <code>GOOGLE_CLIENT_ID</code> in <code>.env</code>.</p>
+    {% endif %}
     <p style="margin:18px 0 0; color:#95a9c3;">Don't have an account? <a href="/signup/" style="color:#60a5fa;">Sign up</a></p>
   </div>
 </section>
@@ -26,6 +41,13 @@
     function show(msg, ok) {
       notice.textContent = msg;
       notice.className = "notice show " + (ok ? "ok" : "err");
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google_error")) {
+      show("Google sign in failed: " + params.get("google_error"), false);
+      params.delete("google_error");
+      const newQuery = params.toString();
+      history.replaceState({}, "", newQuery ? (window.location.pathname + "?" + newQuery) : window.location.pathname);
     }
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -50,6 +72,32 @@
         show("An error occurred: " + err, false);
       }
     });
+
+    {% if google_client_id %}
+    const googleRoot = document.getElementById("google-btn-wrap");
+    function initGoogleButton() {
+      if (!googleRoot || !window.google || !window.google.accounts || !window.google.accounts.id) return false;
+      window.google.accounts.id.initialize({
+        client_id: "{{ google_client_id|escapejs }}",
+        ux_mode: "redirect",
+        login_uri: "{{ google_redirect_uri|escapejs }}"
+      });
+      window.google.accounts.id.renderButton(googleRoot, {
+        theme: "outline",
+        size: "large",
+        shape: "pill",
+        width: 320
+      });
+      return true;
+    }
+    if (!initGoogleButton()) {
+      let retries = 20;
+      const timer = setInterval(function () {
+        if (initGoogleButton() || retries <= 0) clearInterval(timer);
+        retries -= 1;
+      }, 200);
+    }
+    {% endif %}
   })();
 </script>
 {% endblock %}
