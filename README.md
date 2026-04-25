@@ -283,7 +283,7 @@ Run the server and visit the links below in your browser to test CRUD via the DR
 | POST | `/api/user/auth/google/redirect/` | Google redirect callback endpoint used by frontend Google button |
 | GET / POST | `/api/song-generation-requests/` | Request list / create (uses `GENERATOR_STRATEGY`) |
 | GET / PUT / DELETE | `/api/song-generation-requests/{id}/` | Request read / update / delete |
-| GET | `/api/song-generation-requests/status/{taskId}/{userId}` | Poll record-info; on `SUCCESS`, completes request and creates `Song` |
+| GET | `/api/song-generation-requests/status/{taskId}/{userId}` | Poll record-info; on `SUCCESS`, completes request and creates `Song` (idempotent: prevents duplicate song creation) |
 | GET / POST | `/api/sharelinks/` | Sharelink list / create |
 | GET / PUT / DELETE | `/api/sharelinks/{id}/` | Sharelink read / update / delete |
 | GET | `/api/sharelinks/public/{id}/` | Public share URL (only when `is_active=true`) |
@@ -331,6 +331,16 @@ Sign out:
 - Toggle share status per song (`Share: ON/OFF`)
 - Copy share URL to clipboard when share is enabled
 - Delete song with a custom confirm modal UI (not browser `window.confirm`)
+- Resume pending generation tasks automatically (stored as `pendingGenerationTasks` in `localStorage`)
+
+### Generation recovery behavior
+
+You no longer need to keep `/generate-ai-music/` open while waiting for generation:
+
+- When a request is created, frontend stores `taskId` in `localStorage` (`pendingGenerationTasks`)
+- If the tab is closed, opening `/my-songs/` will continue polling those pending tasks
+- When status becomes `SUCCESS` or `FAILED`, the pending task is removed from `localStorage`
+- Backend status flow is idempotent, so repeated polling does not create duplicate `Song` records
 
 ## Frontend Routes
 
