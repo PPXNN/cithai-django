@@ -1,0 +1,71 @@
+{% extends "songgenerationrequest/base.html" %}
+{% block title %}Sign Up - AI Music Studio{% endblock %}
+{% block content %}
+<section style="max-width:460px; margin:30px auto;">
+  <div class="card" style="padding:28px;">
+    <h1 style="margin:0 0 6px; font-size:34px;">Create Account</h1>
+    <p style="margin:0 0 20px; color:#95a9c3;">Start generating AI music today</p>
+    <form id="signup-form">
+      <label class="label" for="email">Email</label>
+      <input id="email" name="email" type="email" required />
+      <div style="height:12px;"></div>
+      <label class="label" for="password">Password</label>
+      <input id="password" name="password" type="password" placeholder="••••••••" required />
+      <div style="height:12px;"></div>
+      <label class="label" for="confirm_password">Confirm password</label>
+      <input id="confirm_password" name="confirm_password" type="password" placeholder="••••••••" required />
+      <button class="btn" style="width:100%; margin-top:16px; padding:11px 14px;" type="submit">Create Account</button>
+      <div id="notice" class="notice"></div>
+    </form>
+    <p style="margin:18px 0 0; color:#95a9c3;">Already have an account? <a href="/signin/" style="color:#60a5fa;">Sign in</a></p>
+  </div>
+</section>
+{% endblock %}
+{% block page_script %}
+<script>
+  (function () {
+    const form = document.getElementById("signup-form");
+    const notice = document.getElementById("notice");
+    function show(msg, ok) {
+      notice.textContent = msg;
+      notice.className = "notice show " + (ok ? "ok" : "err");
+    }
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const email = document.getElementById("email").value.trim().toLowerCase();
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm_password").value;
+      if (!email) return;
+      if (!password || password.length < 6) {
+        show("Password must be at least 6 characters.", false);
+        return;
+      }
+      if (password !== confirm) {
+        show("Passwords do not match.", false);
+        return;
+      }
+      try {
+        const createRes = await fetch("/api/user/auth/signup/", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: csrfHeaders(),
+          body: JSON.stringify({
+            email: email,
+            password: password
+          })
+        });
+        const data = await createRes.json();
+        if (!createRes.ok) {
+          show("Sign up failed: " + (data.detail || JSON.stringify(data)), false);
+          return;
+        }
+        setCurrentUser(data);
+        show("Account created. Redirecting to Generate...", true);
+        setTimeout(function () { window.location.href = "/generate-ai-music/"; }, 500);
+      } catch (err) {
+        show("An error occurred: " + err, false);
+      }
+    });
+  })();
+</script>
+{% endblock %}
