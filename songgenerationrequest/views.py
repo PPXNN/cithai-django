@@ -1,11 +1,49 @@
+from django.shortcuts import render
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from song.enums import Genre, Mood, Occasion, VoiceType
 from .models import RequestStatus, SongGenerationRequest
 from song.models import Song
 from song.serializers import SongSerializer
 from .serializers import SongGenerationRequestSerializer
 from .generation import GenerationRequest, get_song_generation_strategy
+
+
+@ensure_csrf_cookie
+def generate_ai_music_page(request):
+    """Served HTML form; field options mirror ``SongGenerationRequest`` / song enums."""
+    return render(
+        request,
+        "songgenerationrequest/generate.html",
+        {
+            "occasion_choices": list(Occasion.choices),
+            "genre_choices": list(Genre.choices),
+            "mood_choices": list(Mood.choices),
+            "voice_choices": list(VoiceType.choices),
+        },
+    )
+
+
+@ensure_csrf_cookie
+def home_page(request):
+    return render(request, "songgenerationrequest/home.html")
+
+
+@ensure_csrf_cookie
+def sign_in_page(request):
+    return render(request, "songgenerationrequest/signin.html")
+
+
+@ensure_csrf_cookie
+def sign_up_page(request):
+    return render(request, "songgenerationrequest/signup.html")
+
+
+@ensure_csrf_cookie
+def my_songs_page(request):
+    return render(request, "songgenerationrequest/my_songs.html")
 
 
 def _http_status_for_suno_envelope(resp_json: dict) -> int:
