@@ -90,6 +90,7 @@
           return;
         }
         const taskId = createData.taskId;
+        addPendingGenerationTask(taskId, user.id);
         show("Generating... taskId: " + taskId, true);
 
         const startedAt = Date.now();
@@ -124,11 +125,13 @@
           }
 
           if (polled.status === "SUCCESS") {
+            removePendingGenerationTask(taskId, user.id);
             show("Song created. Redirecting to My Songs...", true);
             setTimeout(function () { window.location.href = "/my-songs/"; }, 700);
             break;
           }
           if (polled.status === "FAILED") {
+            removePendingGenerationTask(taskId, user.id);
             show("Generation failed: " + JSON.stringify(polled.raw), false);
             break;
           }
