@@ -52,28 +52,23 @@ class AuthSignUpAPIView(APIView):
     """
 
     def post(self, request):
+        username = str(request.data.get("username") or "").strip()
         email = str(request.data.get("email") or "").strip().lower()
         password = str(request.data.get("password") or "")
 
-        if not email or not password:
+        if not username or not email or not password:
             return Response(
-                {"detail": "email and password are required"},
+                {"detail": "username, email and password are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if User.objects.filter(email=email).exists():
             return Response({"detail": "email already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Django's AbstractUser still requires a unique username; generate one from email.
-        base = (email.split("@")[0] or "user").strip()[:20] or "user"
-        candidate = base
-        i = 1
-        while User.objects.filter(username=candidate).exists():
-            i += 1
-            suffix = f"{i}"
-            candidate = (base[: (20 - len(suffix))] + suffix) if len(base) >= len(suffix) else (base + suffix)
+        if User.objects.filter(username=username).exists():
+            return Response({"detail": "username already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.create_user(username=candidate, email=email, password=password)
+        user = User.objects.create_user(username=username, email=email, password=password)
         serializer = UserSerializer(user)
         login(request, user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -81,17 +76,23 @@ class AuthSignUpAPIView(APIView):
 
 class AuthSignInAPIView(APIView):
     def post(self, request):
+        username = str(request.data.get("username") or "").strip()
         email = str(request.data.get("email") or "").strip().lower()
         password = str(request.data.get("password") or "")
 
-        if not email or not password:
-            return Response({"detail": "email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not username and not email:
+            return Response({"detail": "username (or email) and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not password:
+            return Response({"detail": "username (or email) and password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user_obj = User.objects.filter(email=email).first()
-        if not user_obj:
-            return Response({"detail": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        login_username = username
+        if not login_username and email:
+            user_obj = User.objects.filter(email=email).first()
+            if not user_obj:
+                return Response({"detail": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            login_username = user_obj.username
 
-        user = authenticate(request, username=user_obj.username, password=password)
+        user = authenticate(request, username=login_username, password=password)
         if not user:
             return Response({"detail": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
