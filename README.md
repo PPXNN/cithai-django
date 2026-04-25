@@ -17,6 +17,12 @@ A Django-based domain layer for Cithai, including **Exercise 4** song generation
 git clone <your-repo-url>
 cd cithai-django
 
+# Create local environment file for mac
+cp .env.example .env
+
+#Create local environment file for window
+copy .env.example .env
+
 # Install requirements
 pip install -r requirements.txt
 
@@ -30,7 +36,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Visit `http://127.0.0.1:8000/admin/` to access the Django Admin interface.
+Visit `http://127.0.0.1:8000/` for the web UI and `http://127.0.0.1:8000/admin/` for Django Admin.
 
 ---
 
@@ -160,7 +166,6 @@ The central domain entity representing a generated song:
 - `genre` — pop, rock, jazz, classical, hiphop, rb, folk
 - `voice_type` — male, female, instrumental
 - `mood` — happy, sad, romantic, calm, funny
-- `status` — generating → completed / failed
 - `audiofile_url` — URL to the generated audio file (blank while generating)
 - `is_private` — visibility control
 - `created_at` — timestamp
@@ -170,8 +175,8 @@ The central domain entity representing a generated song:
 
 ### `SongGenerationRequest` (app: `songgenerationrequest`)
 Tracks the AI generation job for each song:
-- `song` — OneToOne link to `Song`
 - `title`, `occasion`, `genre`, `voice_type`, `mood` — snapshot of what was requested
+- `taskId` — external generation task id
 - `request_status` — generating / completed / failed
 - `estimated_duration` — estimated generation time in seconds
 - `requested_at` — timestamp
@@ -179,8 +184,11 @@ Tracks the AI generation job for each song:
 ### `Sharelink` (app: `sharelink`)
 A shareable link for a completed song:
 - `song` — OneToOne link to `Song`
-- `url` — the share URL
+- `url` — app-controlled public share URL (`/api/sharelinks/public/{id}/`)
 - `is_active` — whether the link is currently active
+
+When `is_active = false`, opening the public share URL returns `404` (disabled).  
+When `is_active = true`, the URL redirects to the song audio file.
 
 ---
 
@@ -203,9 +211,9 @@ All CRUD operations are available through **Django Admin** at `/admin/`.
 ### Suggested demo flow:
 1. **Create** a User (Admin → Users → Add User)
 2. **Create** a Song assigned to that user (Admin → Songs → Add Song)
-3. **Create** a SongGenerationRequest linked to the song
+3. **Create** a SongGenerationRequest
 4. **Create** a Sharelink for the song
-5. **Update** the Song's `status` from `generating` to `completed` and add an `audiofile_url`
+5. **Update** Song fields (e.g. `title` or `is_private`)
 6. **Delete** the Sharelink to demonstrate deletion cascading
 
 ---
@@ -222,15 +230,35 @@ Run the server and visit the links below in your browser to test CRUD via the DR
 
 | Method | URL | Operation |
 |--------|-----|-----------|
-| GET / POST | `/api/songs/` | List / Create |
-| GET / PUT / DELETE | `/api/songs/{id}/` | Read / Update / Delete |
-| GET / POST | `/api/users/` | List / Create |
-| GET / PUT / DELETE | `/api/users/{id}/` | Read / Update / Delete |
-| GET / POST | `/api/song-generation-requests/` | List / Create (uses `GENERATOR_STRATEGY`) |
-| GET / PUT / DELETE | `/api/song-generation-requests/{id}/` | Read / Update / Delete |
-| GET | `/api/song-generation-requests/status/{taskId}/{userId}` | Poll Suno record-info; on `SUCCESS`, completes request and creates `Song` |
-| GET / POST | `/api/sharelinks/` | List / Create |
-| GET / PUT / DELETE | `/api/sharelinks/{id}/` | Read / Update / Delete |
+| GET / POST | `/api/song/` | Song list / create |
+| GET / PUT / DELETE | `/api/song/{id}/` | Song read / update / delete |
+| GET / POST | `/api/user/` | User list / create |
+| GET / PUT / DELETE | `/api/user/{id}/` | User read / update / delete |
+| POST | `/api/user/auth/signup/` | User sign up |
+| POST | `/api/user/auth/signin/` | User sign in |
+| GET / POST | `/api/song-generation-requests/` | Request list / create (uses `GENERATOR_STRATEGY`) |
+| GET / PUT / DELETE | `/api/song-generation-requests/{id}/` | Request read / update / delete |
+| GET | `/api/song-generation-requests/status/{taskId}/{userId}` | Poll record-info; on `SUCCESS`, completes request and creates `Song` |
+| GET / POST | `/api/sharelinks/` | Sharelink list / create |
+| GET / PUT / DELETE | `/api/sharelinks/{id}/` | Sharelink read / update / delete |
+| GET | `/api/sharelinks/public/{id}/` | Public share URL (only when `is_active=true`) |
+
+## Frontend Notes (My Songs)
+
+`/my-songs/` currently supports:
+
+- Play songs inline using the bottom audio player
+- Toggle share status per song (`Share: ON/OFF`)
+- Copy share URL to clipboard when share is enabled
+- Delete song with a custom confirm modal UI (not browser `window.confirm`)
+
+## Frontend Routes
+
+- `/` - Home page
+- `/signin/` - Sign in page
+- `/signup/` - Sign up page
+- `/generate-ai-music/` - Song generation page
+- `/my-songs/` - Song list/player/share/delete page
 
 ## Project Structure
 
