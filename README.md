@@ -57,6 +57,26 @@ Copy `.env.example` to `.env` and set:
 
 - **`GENERATOR_STRATEGY`**: `mock` (default) or `suno`
 - **`SUNO_API_KEY`**: your Bearer token from Suno — **required only when** `GENERATOR_STRATEGY=suno`
+- **`GOOGLE_CLIENT_ID`**: OAuth client id from Google Cloud Console — **required only when** using `/api/user/auth/google/`
+- **`GOOGLE_REDIRECT_URI`**: redirect URL used by Google Sign-In redirect flow (must match Google OAuth client setting exactly)
+
+### Google OAuth local setup (required for Google Sign-In)
+
+Use the same OAuth Client ID as `GOOGLE_CLIENT_ID` and configure:
+
+- **Authorized JavaScript origins**
+  - `http://127.0.0.1:8000`
+  - `http://localhost:8000` (optional, if you use localhost)
+- **Authorized redirect URIs**
+  - `http://127.0.0.1:8000/api/user/auth/google/redirect/`
+  - `http://localhost:8000/api/user/auth/google/redirect/` (optional, if you use localhost)
+
+Suggested `.env` example for local development:
+
+```bash
+GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
+GOOGLE_REDIRECT_URI=http://127.0.0.1:8000/api/user/auth/google/redirect/
+```
 
 ### Run in mock mode (offline) — step by step
 
@@ -256,7 +276,11 @@ Run the server and visit the links below in your browser to test CRUD via the DR
 | GET / POST | `/api/user/` | User list / create |
 | GET / PUT / DELETE | `/api/user/{id}/` | User read / update / delete |
 | POST | `/api/user/auth/signup/` | User sign up (requires `username`, `email`, `password`) |
+| GET | `/api/user/auth/me/` | Get current signed-in user from Django session |
 | POST | `/api/user/auth/signin/` | User sign in (supports `username` + `password`; `email` + `password` also supported) |
+| POST | `/api/user/auth/signout/` | User sign out (clears Django session) |
+| POST | `/api/user/auth/google/` | Google sign in/sign up (requires Google `id_token`) |
+| POST | `/api/user/auth/google/redirect/` | Google redirect callback endpoint used by frontend Google button |
 | GET / POST | `/api/song-generation-requests/` | Request list / create (uses `GENERATOR_STRATEGY`) |
 | GET / PUT / DELETE | `/api/song-generation-requests/{id}/` | Request read / update / delete |
 | GET | `/api/song-generation-requests/status/{taskId}/{userId}` | Poll record-info; on `SUCCESS`, completes request and creates `Song` |
@@ -285,6 +309,20 @@ Sign in (recommended):
 }
 ```
 
+Google sign in:
+
+```json
+{
+  "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6..."
+}
+```
+
+Sign out:
+
+```json
+{}
+```
+
 ## Frontend Notes (My Songs)
 
 `/my-songs/` currently supports:
@@ -297,8 +335,8 @@ Sign in (recommended):
 ## Frontend Routes
 
 - `/` - Home page
-- `/signin/` - Sign in page
-- `/signup/` - Sign up page
+- `/signin/` - Sign in page (auto-redirects to `/generate-ai-music/` when already authenticated)
+- `/signup/` - Sign up page (auto-redirects to `/generate-ai-music/` when already authenticated)
 - `/generate-ai-music/` - Song generation page
 - `/my-songs/` - Song list/player/share/delete page
 
