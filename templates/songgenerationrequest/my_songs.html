@@ -145,6 +145,26 @@
     async function loadSongs() {
       const user = await requireAuthUser();
       if (!user) return;
+      const pendingTasks = getPendingGenerationTasks().filter(function (item) {
+        return Number(item.userId) === Number(user.id);
+      });
+      if (pendingTasks.length) {
+        await Promise.all(pendingTasks.map(async function (item) {
+          try {
+            const statusRes = await fetch("/api/song-generation-requests/status/" + item.taskId + "/" + user.id, {
+              credentials: "same-origin"
+            });
+            const statusData = await statusRes.json();
+            if (!statusRes.ok) return;
+            const statusValue = String((statusData && statusData.data && statusData.data.status) || "").toUpperCase();
+            if (statusValue === "SUCCESS" || statusValue === "FAILED") {
+              removePendingGenerationTask(item.taskId, user.id);
+            }
+          } catch (err) {
+            // keep pending task for next refresh
+          }
+        }));
+      }
       const [songRes, shareMap] = await Promise.all([
         fetch("/api/song/"),
         loadShareMap()
